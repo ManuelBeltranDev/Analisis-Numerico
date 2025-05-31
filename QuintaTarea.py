@@ -540,3 +540,128 @@ plt.grid()
 plt.legend()
 plt.show()
 #a partir de xStop = 0.7 la  funcion explota a numeros extremadamente numeros muy altos
+
+
+
+###### INCISO C)
+
+
+# --- Función del sistema: y'' = cos(xy) convertido a sistema de primer orden
+def F3(x, y):
+    F = np.zeros(2)
+    F[0] = y[1]
+    F[1] = np.cos(x * y[0])
+    return F
+
+# --- Condiciones iniciales para el inciso (c)
+def initCond_c(u):
+    return np.array([0.0, u])  # y(0) = 0, y'(0) = u
+
+# --- Método RK4
+def Run_Kut4(F, x, y, xStop, h):
+    def run_kut4(F, x, y, h):
+        K0 = h * F(x, y)
+        K1 = h * F(x + h/2.0, y + K0/2.0)
+        K2 = h * F(x + h/2.0, y + K1/2.0)
+        K3 = h * F(x + h, y + K2)
+        return (K0 + 2.0*K1 + 2.0*K2 + K3) / 6.0
+
+    X = [x]
+    Y = [y]
+    while x < xStop:
+        h = min(h, xStop - x)
+        y = y + run_kut4(F, x, y, h)
+        x += h
+        X.append(x)
+        Y.append(y)
+    return np.array(X), np.array(Y)
+
+# --- Función r(u)
+def r_c(u):
+    try:
+        X, Y = Run_Kut4(F3, 0.0, initCond_c(u), 1.0, 0.1)
+        return Y[-1][0] - 2.0  # y(1) - 2
+    except:
+        return np.nan
+
+# --- Método de Ridder
+def Ridder(f, a, b, tol=1.0e-9): 
+    fa = f(a)
+    fb = f(b)
+    if np.isnan(fa) or np.isnan(fb):
+        raise ValueError("Intervalo inválido, r_c(u) es NaN en los extremos")
+    if fa == 0.0: return a
+    if fb == 0.0: return b
+    if np.sign(fa) == np.sign(fb):
+        raise ValueError("f(a) y f(b) deben tener signos opuestos")
+    for i in range(30):
+        c = 0.5*(a + b)
+        fc = f(c)
+        s = np.sqrt(fc**2 - fa*fb)
+        if s == 0.0: return None
+        dx = (c - a)*fc/s
+        if (fa - fb) < 0.0: dx = -dx
+        x = c + dx
+        fx = f(x)
+        if i > 0 and abs(x - xOld) < tol * max(abs(x), 1.0):
+            return x
+        xOld = x
+        if np.sign(fc) == np.sign(fx):
+            if np.sign(fa) != np.sign(fx): b = x; fb = fx
+            else: a = x; fa = fx
+        else:
+            a = c; b = x; fa = fc; fb = fx
+    print("Demasiadas iteraciones")
+    return None
+
+# --- Imprimir solución
+def imprimeSol(X, Y, frec):
+    def imprimeEncabezado(n):
+        print("\n x ", end=" ")
+        for i in range(n):
+            print(f" y[{i}] ", end=" ")
+        print()
+
+    def imprimeLinea(x, y, n):
+        print(f"{x:13.4e}", end=" ")
+        for i in range(n):
+            print(f"{y[i]:13.4e}", end=" ")
+        print()
+
+    m = len(Y)
+    try: n = len(Y[0])
+    except TypeError: n = 1
+    if frec == 0: frec = m
+    imprimeEncabezado(n)
+    for i in range(0, m, frec):
+        imprimeLinea(X[i], Y[i], n)
+    if i != m - 1:
+        imprimeLinea(X[-1], Y[-1], n)
+
+# --- Búsqueda de y'(0)
+# Puedes ajustar el intervalo si cambia la solución esperada
+u_c = Ridder(r_c, 1.0, 2.0)
+
+# --- Integrar con el valor correcto
+x = 0.0
+xStop = 1.0
+h = 0.1
+X, Y = Run_Kut4(F3, x, initCond_c(u_c), xStop, h)
+
+print(f"\nSolución encontrada con y'(0) ≈ {u_c:.5f}")
+imprimeSol(X, Y, 2)
+
+# --- Graficar solución
+plt.plot(X, Y[:, 0], label="y(x)")
+plt.plot(X, Y[:, 1], label="y'(x)")
+plt.xlabel("x")
+plt.ylabel("y, y'")
+plt.title("Solución del BVP: y'' = cos(xy) con y(0)=0, y(1)=2")
+plt.grid()
+plt.legend()
+plt.show()
+
+
+
+
+
